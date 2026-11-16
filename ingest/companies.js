@@ -93,10 +93,12 @@ export function loadNames(dir = path.join(HERE, "data", "boards")) {
 export function companyName(ats, token, fromPosting = null) {
   const key = String(token || "").toLowerCase();
   if (NAME_FIXES[key]) return NAME_FIXES[key];
-  if (fromPosting) return String(fromPosting).trim();
-  // Board lists sometimes carry the careers-site name in brackets
-  // ("Pfizer (Internaljobs)"); that is not part of the employer's name.
-  const listed = String(loadNames().get(`${ats}:${key}`) || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+  // Board names sometimes carry the careers-site name in brackets
+  // ("Pfizer (Internaljobs)", "Exadel Inc (Website)"); that is not part of
+  // the employer's name.
+  const tidy = (n) => String(n || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+  if (fromPosting && tidy(fromPosting)) return tidy(fromPosting);
+  const listed = tidy(loadNames().get(`${ats}:${key}`));
   const name = listed || prettify(token);
   return /^[a-z]/.test(name) && !/\d/.test(name) ? name.charAt(0).toUpperCase() + name.slice(1) : name;
 }

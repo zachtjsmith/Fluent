@@ -228,5 +228,6 @@ test("company names: fixes, the open list, then a tidy fallback", () => {
   assert.equal(companyName("greenhouse", "doordashusa"), "DoorDash");
   assert.equal(companyName("ashby", "some-new-startup"), "Some New Startup");
   assert.equal(companyName("greenhouse", "anything", "Real Name Inc"), "Real Name Inc");
+  assert.equal(companyName("greenhouse", "anything", "Exadel Inc (Website)"), "Exadel Inc");
   assert.equal(prettify("acme-health"), "Acme Health");
 });
