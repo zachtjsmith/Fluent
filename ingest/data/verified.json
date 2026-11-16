@@ -1,0 +1,36 @@
+[
+  {
+    "url": "https://job-boards.greenhouse.io/doordashusa/jobs/8027367",
+    "ats": "greenhouse", "token": "doordashusa", "companyName": "DoorDash",
+    "title": "Manager, Marketing AI Enablement", "locations": ["United States - Remote"], "remote": true,
+    "pay": { "min": 142800, "max": 210000, "extra": "+ equity" },
+    "detail": {
+      "summary": "Runs the AI enablement programme for DoorDash's marketing organisation: intake, office hours, training and documentation, plus a central view of every AI pilot and who owns it.",
+      "does": ["Run intake, prioritisation support, office hours and training for marketing teams adopting AI", "Turn promising AI ideas into clear briefs, success metrics and repeatable workflows", "Set light governance and lead AI education across the organisation"],
+      "wants": ["5+ years in enablement, learning and development, marketing operations, programme management or AI adoption", "Experience across several marketing functions and comfort leading ambiguous, cross-team work"]
+    },
+    "standalone": true, "checked": "2026-11-13"
+  },
+  {
+    "url": "https://job-boards.greenhouse.io/scaleai/jobs/4699458005",
+    "ats": "greenhouse", "token": "scaleai", "companyName": "Scale AI",
+    "title": "AI Deployment Strategist, Enterprise", "locations": ["San Francisco, CA", "New York, NY"],
+    "pay": { "min": 192800, "max": 241000, "extra": "+ equity" },
+    "detail": {
+      "summary": "Works directly with data, engineering and business leaders at large enterprises, guiding AI projects from the first conversation through delivery, expansion and measurable results.",
+      "does": ["Own customer outcomes so deployments succeed and lead to renewal and expansion", "Set repeatable delivery standards and keep projects on schedule", "Spot new value inside accounts and report what is and is not working to product and leadership"],
+      "wants": ["Five to eight years in fast-moving, ambiguous environments; a technical or quantitative background is preferred", "Strong commercial and technical judgment, and willingness to travel 30 to 50 percent of the time"]
+    },
+    "standalone": true, "checked": "2026-11-13"
+  },
+  { "url": "https://jobs.ashbyhq.com/forgepoint/8e6ef02e-a689-42d3-ab60-c64b4552bdf5", "pay": { "min": 175000, "max": 215000, "extra": "+ equity" }, "checked": "2026-11-13" },
+  { "url": "https://jobs.ashbyhq.com/retell-ai/72dcc20d-0f0e-4639-9b7e-1806327acd97", "pay": { "min": 170000, "max": 260000, "extra": "+ equity" }, "checked": "2026-11-13" },
+  { "url": "https://jobs.ashbyhq.com/probook/85257b75-4903-482a-8ee5-e2995a47edd6", "pay": { "min": 110000, "max": 130000, "extra": "+ equity" }, "checked": "2026-11-13" },
+  { "url": "https://jobs.ashbyhq.com/moment/752a96ec-5ad1-456e-a98d-6c64c6dfa256", "pay": { "min": 200000, "max": 300000, "extra": "+ equity" }, "checked": "2026-11-13" },
+  { "url": "https://jobs.ashbyhq.com/eliseai/9b461abe-dad0-491c-90b1-d533f3b0e5f5", "pay": { "min": 160000, "max": 200000, "extra": "+ equity" }, "checked": "2026-11-13" },
+  { "url": "https://jobs.ashbyhq.com/simile/fa0a6f45-21af-43aa-96d0-6bcc4ece750e", "pay": { "min": 150000, "max": 300000, "extra": "+ equity" }, "checked": "2026-11-13" },
+  { "url": "https://jobs.ashbyhq.com/aiuc/f854dfc8-029e-4d5d-aad7-303959582c0a", "pay": { "min": 150000, "max": 275000, "extra": "+ equity" }, "checked": "2026-11-13" },
+  { "url": "https://job-boards.greenhouse.io/litmos/jobs/4963581101", "pay": { "min": 120000, "max": 150000, "extra": "+ 20% bonus" }, "checked": "2026-11-13" },
+  { "url": "https://job-boards.greenhouse.io/chime/jobs/8697509002", "pay": { "min": 138000, "max": 190000, "extra": "+ bonus and equity" }, "checked": "2026-11-13" },
+  { "url": "https://job-boards.greenhouse.io/globalizationpartners/jobs/7733378003", "pay": { "min": 176000, "max": 221000, "extra": "+ bonus" }, "checked": "2026-11-13" }
+]

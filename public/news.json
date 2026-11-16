@@ -1,0 +1,88 @@
+{
+  "updated": "2026-11-15",
+  "note": "Hand-picked. Each summary is written in our own words from the linked article; add, edit or remove entries here. group: \"background\" puts an entry under Background reading.",
+  "items": [
+    {
+      "title": "AT&T says close to 500 AI agent workflows are now live",
+      "source": "AI Agent Store",
+      "url": "https://aiagentstore.ai/ai-agent-news/this-week",
+      "date": "2026-11-15",
+      "tag": "Adoption",
+      "summary": "A weekly roundup leads with AT&T: the carrier reports nearly 500 agent-run workflows in day-to-day operations, more than a million transactions a month, and a plan to triple that count within a year. The point for adoption teams is that whole processes were redesigned, not just given a chatbot."
+    },
+    {
+      "title": "Services firms are packaging 'get out of pilot' help for mid-size companies",
+      "source": "Solutions Review",
+      "url": "https://solutionsreview.com/enterprise-resource-planning/top-worktech-news-from-the-week-of-november-13th",
+      "date": "2026-11-13",
+      "tag": "Deployment",
+      "summary": "This week's worktech roundup includes Syntax opening a Business AI practice for mid-market firms, built around fixed-fee discovery and subscription delivery teams. It is another sign that deployment and enablement work is becoming a product in its own right."
+    },
+    {
+      "title": "Four in five big companies run AI agents; few can tie the spend to profit",
+      "source": "Genpact",
+      "url": "https://media.genpact.com/2026-11-12-79-of-Enterprises-Report-AI-Agents-in-Production,-but-Only-15-Have-Fully-Tied-AI-Investment-to-P-L-Outcomes",
+      "date": "2026-11-12",
+      "tag": "Research",
+      "summary": "Genpact surveyed more than 2,000 executives in 17 industries. Agents are in production at 79% of their companies, but only 15% have fully linked AI investment to profit-and-loss results, and about half of funded projects delivered the value expected."
+    },
+    {
+      "title": "Companies talk about AI automation far more than they build it",
+      "source": "Flow Digital (press release)",
+      "url": "https://www.globenewswire.com/news-release/2026/11/12/3402007/0/en/businesses-talk-far-more-about-ai-automation-than-they-re-actually-building-it-flow-digital-s-new-analysis-finds.html",
+      "date": "2026-11-12",
+      "tag": "Research",
+      "summary": "An automation consultancy went through six months of its own client calls. AI came up in roughly half of them, yet only 22% of the organizations asking for AI automation reached a live deployment or an active build. A vendor's own data, so read it as one firm's view."
+    },
+    {
+      "title": "Where the AI and creative-tool jobs are this month",
+      "source": "Creators Toolbox",
+      "url": "https://creatorstoolbox.com/reports/ai-hiring-november-2026",
+      "date": "2026-11-08",
+      "tag": "Hiring",
+      "summary": "A count of 6,907 open roles on the careers pages of 151 AI, design and creator-tool companies. Half sit at 26 AI-first companies, about one in five is remote, and San Francisco alone accounts for 37%."
+    },
+    {
+      "title": "The week AI agents got an off switch",
+      "source": "Promact",
+      "url": "https://promactinfo.com/blogs/enterprise-ai-news-this-week-november-6-2026/",
+      "date": "2026-11-06",
+      "tag": "Governance",
+      "summary": "A business-reader digest whose theme is control: CrowdStrike introduced an admin-triggered shutdown for agents that misbehave, and Adobe made its customer-experience agent usable from inside ChatGPT, Claude, Gemini and Copilot. Useful context for anyone writing AI usage rules."
+    },
+    {
+      "title": "Agents are trusted with small jobs, not yet the important ones",
+      "source": "CIO",
+      "url": "https://cio.com/article/4242283/ai-agent-autonomy-remains-an-elusive-work-in-progress.html",
+      "date": "2026-11-05",
+      "tag": "Governance",
+      "summary": "IT leaders describe handing agents low-risk tasks while keeping a person in the loop for anything business-critical. The piece cites KPMG's summer survey, in which 62% of IT leaders were building or deploying agents, up from 53% a quarter earlier."
+    },
+    {
+      "title": "Half of US workers use AI on the job, but daily use is still rare",
+      "source": "Stanford Graduate School of Business",
+      "url": "https://www.gsb.stanford.edu/index%2ephp/node/631299",
+      "date": "2026-11-03",
+      "tag": "Research",
+      "summary": "Stanford faculty and students take stock of AI at work a year on. About half of American employees say they use it in their jobs, while only 13% use it every day: the gap between having the tools and changing how work gets done."
+    },
+    {
+      "title": "'AI' now appears in three times as many kinds of job title, mostly outside tech",
+      "source": "HR Dive",
+      "url": "https://hrdive.com/news/more-job-titles-include-ai-across-every-sector/825038",
+      "date": "2026-07-13",
+      "tag": "Hiring",
+      "group": "background",
+      "summary": "Indeed's Hiring Lab found the number of US professions with AI in the job title has more than tripled since 2022, and that roughly 63% of those titles are in non-tech occupations. This is the trend this board exists to serve."
+    },
+    {
+      "title": "McKinsey's 2026 survey: more companies are scaling AI, returns are still catching up",
+      "source": "McKinsey",
+      "url": "https://www.mckinsey.com/capabilities/quantumblack/our-insights/the-state-of-ai",
+      "date": "2026-08",
+      "tag": "Research",
+      "group": "background",
+      "summary": "The annual State of AI survey reports that 44% of organizations using AI are now scaling it across the business, with agent use growing fastest at large companies, while most are still working to turn spending into measurable results."
+    }
+  ]
+}
