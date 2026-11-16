@@ -193,6 +193,11 @@ test("normalize: drop reasons", () => {
   assert.ok(normalize(raw({ postedAt: "2026-09-15T12:00:00Z" }), NOW).job, "59 days old");
   assert.equal(normalize(raw({ postedAt: "2026-09-13T00:00:00Z" }), NOW).drop, DROP.STALE);
   assert.equal(normalize(raw({ postedAt: null }), NOW).drop, DROP.NO_DATE);
+  // An hourly rate sent as structured pay is never shown as a salary. If the
+  // posting's own text gives a yearly range, that is used instead.
+  assert.equal(normalize(raw({ pay: { min: 50, max: 55 }, html: "<p>We are hiring an AI enablement lead.</p>" }), NOW).job.min, null);
+  assert.equal(normalize(raw({ pay: { min: 50, max: 55 } }), NOW).job.min, 150000);
+  assert.equal(normalize(raw({ pay: { min: 160000, max: 190000 } }), NOW).job.min, 160000);
   assert.equal(normalize(raw({ ats: "workday", url: "https://acme.wd1.myworkdayjobs.com/internaljobs/job/New-York/AI-Enablement-Lead_R1", applyUrl: null }), NOW).drop, DROP.INTERNAL);
   assert.ok(normalize(raw({ ats: "workday", url: "https://acme.wd1.myworkdayjobs.com/external/job/New-York/AI-Enablement-Lead_R1", applyUrl: null }), NOW).job);
   assert.equal(normalize(raw({ locations: ["London, UK"] }), NOW).drop, DROP.GEO);

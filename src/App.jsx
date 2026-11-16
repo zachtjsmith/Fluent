@@ -57,7 +57,7 @@ const SAMPLE = [
    ========================================================================== */
 
 const money = (n) => "$" + Math.round(n / 1000) + "k";
-const payLabel = (j) => (j.min ? `${money(j.min)}–${money(j.max)}` : "See job listing");
+const payLabel = (j) => (j.min ? (j.max > j.min ? `${money(j.min)}–${money(j.max)}` : money(j.min)) : "See job listing");
 const MARKS = ["#35506F", "#6B5530", "#5A4B78", "#2E5A63", "#7A3E2B", "#1F5A44", "#4A5A26", "#6B2C4D"];
 const markColor = (name) => MARKS[[...name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % MARKS.length];
 const initials = (name) => name.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";

@@ -87,7 +87,12 @@ export function normalize(raw, { now = new Date(), maxAgeDays = 60, requireSalar
 
   const company = companyName(raw.ats, raw.token, raw.companyName);
   const text = raw.html ? htmlToText(raw.html) : "";
-  const pay = raw.pay && raw.pay.min > 0 && raw.pay.max >= raw.pay.min ? raw.pay : parsePay(text);
+  // Pay sent as a structured field can be an hourly or monthly rate. Only a
+  // plausible yearly figure is shown; anything else falls back to the text.
+  const yearly = (p) => p && p.min >= 20000 && p.max >= p.min && p.max <= 2000000;
+  const fromField = yearly(raw.pay) ? raw.pay : null;
+  const fromText = fromField ? null : parsePay(text);
+  const pay = fromField || (yearly(fromText) ? fromText : null);
   if (requireSalary && !pay) return { drop: DROP.NO_SALARY };
   const detail = raw.html ? extractDetail(raw.html) : { summary: "", does: [], wants: [] };
 

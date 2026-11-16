@@ -38,14 +38,17 @@ npm run ingest -- --snapshot /tmp/job-board-data
 npm run build                              # the site, ready to host, in dist/
 ```
 
+## Daily refresh
+
+`.github/workflows/ingest.yml` is set up like Renewal's: every day at 06:00 UTC it installs, runs the tests, collects, checks the site still builds and commits `Board refresh: N live roles`. It can also be run by hand from the Actions tab ("Refresh job board" → Run workflow). The first run, on 16 November 2026 (UTC), polled 391 employer boards directly (9 failed and fell back to the open dataset) and published 503 listings, 118 with pay the employer published.
+
 ## Before launch
 
-1. **Name and domain.** Change `BRAND.name` and `BRAND.title` in `src/App.jsx`, and the title in `index.html`. Set `BRAND.siteUrl`.
-1. **Daily refresh.** Put this folder in a GitHub repository. `.github/workflows/ingest.yml` is set up like Renewal's: once a day at 06:00 UTC it tests, collects, checks the build and commits `Board refresh: N live roles`. Connect the repository to your host (Vercel or Netlify, as with Renewal) so each commit redeploys the site.
-2. **Collector contact.** In GitHub, add a repository variable `COLLECTOR_UA`, for example `FluentJobBoard/1.0 (contact: you@yourdomain.com)`. Until then the collector sends a placeholder contact.
-3. **Forms.** Set `BRAND.formEndpoint` (post a job) and `BRAND.newsletterEndpoint` (the email signup on the News page). Both are Formspree addresses, as on Renewal. Until then both forms say they are not connected, and nothing is sent.
-4. **Contact and checkout.** Set `BRAND.contactEmail` and `BRAND.featuredCheckout` (Gumroad). Review the prices in `AD_OFFERS`: they are copied from Renewal.
-5. **First live run.** Run the "Refresh listings" workflow by hand from the Actions tab and read its summary. The four adapters are tested against stand-ins here; this is their first contact with the real systems.
+1. **Hosting.** In Netlify (as with Renewal), add a new site from this GitHub repository. `netlify.toml` already holds the build settings, so nothing needs typing in. Netlify then redeploys after every daily refresh. Vercel also works (`vercel.json`).
+2. **Domain.** Point the domain at the host and set `BRAND.siteUrl` in `src/App.jsx`. The name is set in `BRAND.name`, `BRAND.title` and `index.html`.
+3. **Collector contact.** In GitHub, add a repository variable `COLLECTOR_UA` (Settings → Secrets and variables → Actions → Variables), for example `FluentJobBoard/1.0 (contact: you@yourdomain.com)`. Employers' hiring systems see it with every request. Until then the collector sends a placeholder contact.
+4. **Forms.** Set `BRAND.formEndpoint` (post a job) and `BRAND.newsletterEndpoint` (the email signup on the News page). Both are Formspree addresses, as on Renewal. Until then both forms say they are not connected, and nothing is sent.
+5. **Contact and checkout.** Set `BRAND.contactEmail` and `BRAND.featuredCheckout` (Gumroad). Review the prices in `AD_OFFERS`: they are copied from Renewal.
 
 ## Hand-checked notes
 

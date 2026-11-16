@@ -1,0 +1,24 @@
+# Netlify settings, as on Renewal: Netlify builds the site from this
+# repository and redeploys every time the daily refresh commits new listings.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Listings and news change every day, so browsers always check for a fresh copy.
+[[headers]]
+  for = "/jobs.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/jobs/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/news.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
