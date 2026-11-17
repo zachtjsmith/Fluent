@@ -108,8 +108,10 @@ const isCompanyHeading = (h) => /^(about\b|who we are|our (company|mission|story
 const ROLE_WORDS = /\b(this role|the role|this position|the position|in this (role|position|job)|you will|you('|’)ll|you would|as (a|an|the|our) |we are (looking|hiring|seeking)|we('|’)re (looking|hiring|seeking)|(is|are) (looking|hiring|seeking) (for|a|an)|is seeking|seeks|responsible for|will (lead|own|drive|partner|work|be responsible|support|help|manage|serve|report|design|build|run|guide|oversee|develop|deliver))\b/i;
 const GREETING = /^(hey|hi|hello|greetings|howdy|welcome)\b/i;
 const NOTE = /^(please note|note\b|important\b|location\b|work location|schedule\b|shift\b|travel\b|reports? to\b|job (title|type|id|code)\b|requisition\b|department\b|salary\b|pay\b|position type\b)/i;
-const LOGISTICS = /\b(\d|one|two|three|four|five)\s*(days?|x)\s*(\/|a|per|each)\s*week\b|\bon-?site (in|at)\b|\bin[- ]office\b|\brelocat|\bvisa\b|\bcommut/i;
-const MONEY = /\$\s?\d|\b(salary|compensation|pay range|base pay|401\s?\(?k\)?|paid time off|pto|health insurance|medical, dental|benefits package)\b/i;
+const LOGISTICS = /\b(\d|one|two|three|four|five)\s*(days?|x)\s*(\/|a|per|each)\s*week\b|\bon-?site (in|at)\b|\bin[- ]office\b|\brelocat|\bvisa\b|\bcommut|\btime ?zones?\b|\bworking hours\b/i;
+const MONEY = /\$\s?\d|\b(salary|compensation|pay range|base pay|401\s?\(?k\)?|paid time off|pto|health insurance|medical, dental|benefits package|bonus|incentive (program|plan|compensation)|eligible (to participate|for (a|an|the) (bonus|incentive|benefits|annual)))\b/i;
+// A first sentence that only points back at something earlier ("That question is this seat.").
+const DANGLING = /^(that|this|these|those|it|they|which|such)\b/i;
 const COMPANY_INTRO = /\b(founded in|headquartered|is a leading|we are a leading|is the leading|the world('|’)?s (leading|largest)|fortune \d+|our mission is|backed by|series [a-f]\b|publicly traded|award-winning|trusted by|serving (more than|over)|offices in|since \d{4})\b/i;
 const TITLE_STOP = new Set(["senior", "junior", "lead", "manager", "director", "head", "principal", "staff", "associate", "chief", "officer", "the", "and", "for", "global", "remote", "hybrid", "usa", "intern", "specialist"]);
 
@@ -149,6 +151,9 @@ function overview(paragraphs, title, lists) {
       // "About the role: We are looking for..." keeps only the sentence.
       sentence = sentence.replace(/^[A-Z][\w’'&/ -]{2,40}:\s+(?=[A-Z])/, "");
       if (sentence.length < 25 || BOILERPLATE.test(sentence) || NOTE.test(sentence) || GREETING.test(sentence) || MONEY.test(sentence) || LOGISTICS.test(sentence)) continue;
+      // A lead-in to a list ("...with the grit to:") is not an overview.
+      if (/:$/.test(sentence)) continue;
+      if (!picked.length && DANGLING.test(sentence) && sentence.length < 60) continue;
       if (picked.includes(sentence)) continue;
       picked.push(sentence);
       length += sentence.length + 1;
@@ -208,7 +213,8 @@ export function extractDetail(html, { title = "" } = {}) {
   }
   if (does.length && wants.length && does[0] === wants[0]) wants = [];
 
-  const summary = overview(paragraphs, title, does.length ? does : wants);
+  const anyList = sections.find((x) => x.items.length && !SKIP_HINTS.test(x.heading))?.items || [];
+  const summary = overview(paragraphs, title, does.length ? does : wants.length ? wants : anyList);
   return { summary, does, wants };
 }
 

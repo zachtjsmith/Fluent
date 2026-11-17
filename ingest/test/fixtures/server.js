@@ -68,14 +68,14 @@ const DATA = {
 
 export function startFixtureServer() {
   let hits = [];
-  const blocked = new Set();
+  const blocked = new Map();
   const server = http.createServer((req, res) => {
     hits.push(req.url);
     const send = (obj, code = 200) => { res.writeHead(code, { "content-type": "application/json" }); res.end(JSON.stringify(obj)); };
     const u = new URL(req.url, "http://x");
     const p = u.pathname;
     let m;
-    if ([...blocked].some((b) => p.startsWith(b))) return send({ error: "not found" }, 404);
+    for (const [prefix, status] of blocked) if (p.startsWith(prefix)) return send({ error: "blocked" }, status);
     if (DATA[p]) return send(DATA[p]);
     if (PAGES[p]) { res.writeHead(200, { "content-type": "text/html" }); return res.end(PAGES[p]); }
     if ((m = /^\/v1\/boards\/northloop\/jobs\/(\d+)$/.exec(p))) { const j = GH.jobs.find((x) => String(x.id) === m[1]); return j ? send({ ...j, absolute_url: `https://job-boards.greenhouse.io/northloop/jobs/${j.id}` }) : send({}, 404); }
@@ -90,8 +90,9 @@ export function startFixtureServer() {
   return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve({
     url: `http://127.0.0.1:${server.address().port}`,
     hits: () => hits,
-    // Make every path starting with a prefix answer 404, or clear the list.
-    block: (prefix) => (prefix ? blocked.add(prefix) : blocked.clear()),
+    // Make every path starting with a prefix answer with an error (404 by
+    // default), or clear the list.
+    block: (prefix, status = 404) => (prefix ? blocked.set(prefix, status) : blocked.clear()),
     close: () => new Promise((r) => server.close(r)),
   })));
 }

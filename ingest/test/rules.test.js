@@ -163,6 +163,11 @@ test("overview: the posting's own sentences about the role, without notes, greet
   const list = extractDetail("<ul><li>Lead customer deployments from kickoff to steady use</li><li>Run executive check-ins every month</li><li>Report adoption to leadership</li></ul>");
   assert.equal(list.summary, "Lead customer deployments from kickoff to steady use. Run executive check-ins every month.");
   assert.equal(extractDetail("").summary, "");
+  // Pay lines, time-zone notes, list lead-ins and sentences that point back at nothing are skipped.
+  assert.equal(extractDetail("<p>This position is eligible to participate in an annual incentive program.</p><ul><li>Lead enterprise AI initiatives from strategy to adoption</li><li>Coach leaders through change</li></ul>").summary, "Lead enterprise AI initiatives from strategy to adoption. Coach leaders through change.");
+  assert.equal(extractDetail("<p>Alignment with west coast US time zone</p><p>You will run formal privacy reviews for AI products and features.</p>").summary, "You will run formal privacy reviews for AI products and features.");
+  assert.equal(extractDetail("<p>That question is this seat. You will define the next generation of the product suite.</p>").summary, "You will define the next generation of the product suite.");
+  assert.equal(extractDetail("<p>We are seeking a product manager to build with generative AI. We are looking for a systems-thinker with grit to:</p>").summary, "We are seeking a product manager to build with generative AI.");
 });
 test("job pages: schema.org JobPosting, Next.js page data and embedded descriptions", () => {
   const ld = (o) => `<script type="application/ld+json">${o}</script>`;
@@ -201,6 +206,10 @@ test("normalize: with descriptions required, a listing without one is left off",
   const cached = normalize({ ...bare, cached: { detail: { summary: "From yesterday.", does: ["a"], wants: [], tools: ["Glean"], audience: "" }, pay: { min: 150000, max: 160000, extra: "" } } }, { ...NOW, requireDetail: true }).job;
   assert.deepEqual([cached.detail.summary, cached.detail.tools[0], cached.min], ["From yesterday.", "Glean", 150000]);
   assert.equal(normalize({ ...bare, html: "<p>x</p>", employmentType: "Volunteer" }, NOW).drop, DROP.UNPAID);
+});
+test("dedupe: the same employer with or without Inc is one listing", () => {
+  const j = (company) => ({ company, title: "Senior Privacy Review Specialist", locations: [{ label: "Remote — US", mode: "Remote" }], mode: "Remote", posted: "2026-11-12", min: null, hasDetail: true, featured: false, detail: { tools: [] } });
+  assert.equal(dedupe([j("Exadel"), j("Exadel Inc")]).length, 1);
 });
 test("tools: only tools the posting names, never the company's own product", () => {
   assert.deepEqual(findTools("covering Claude, Cowork, and Claude Code, plus Glean", "Juniper Square"), ["Claude Code", "Claude", "Glean"]);

@@ -16,6 +16,7 @@ const NOW = "2026-11-13T12:00:00Z";
 const fx = await startFixtureServer();
 for (const v of ["GREENHOUSE", "LEVER", "ASHBY", "WORKABLE"]) process.env[`ATS_BASE_${v}`] = fx.url;
 process.env.COLLECTOR_TEST_SERVER = fx.url;
+process.env.WORKDAY_GAP_MS = "0";
 process.env.COLLECTOR_UA = "RolloutJobBoard/test (contact: test@example.com)";
 // Imported after the environment is set, because adapters read it on load.
 const { greenhouse, lever, ashby, workable } = await import("../adapters.js");
@@ -151,6 +152,23 @@ test("descriptions read on an earlier run are reused; without them a listing is 
     const fresh = await run(opts);
     assert.ok(!fresh.jobs.some((j) => j.company === "Moog"));
     assert.equal(fresh.stats.details.missing.Workday, 1);
+  } finally {
+    fx.block(null);
+    CURATED.splice(0, CURATED.length, ...saved);
+  }
+});
+
+test("the first refusal from Workday ends Workday reading for the run", async () => {
+  const saved = CURATED.splice(0, CURATED.length);
+  try {
+    fx.block("/moog.wd5.myworkdayjobs.com", 429);
+    fx.block("/acme.wd1.myworkdayjobs.com", 429);
+    const before = fx.hits().length;
+    const result = await run({ snapshot: SNAPSHOT, poll: true, maxAge: 60, strict: false, maxBoards: 50, now: NOW, quiet: true, verified: null });
+    const workdayHits = fx.hits().slice(before).filter((h) => h.includes("myworkdayjobs.com"));
+    assert.equal(workdayHits.length, 1, "one refusal, then no more Workday requests (not even its job pages)");
+    assert.equal(result.stats.details.missing.Workday, 2);
+    assert.ok(result.jobs.some((j) => j.source === "BambooHR"), "other systems are still read");
   } finally {
     fx.block(null);
     CURATED.splice(0, CURATED.length, ...saved);

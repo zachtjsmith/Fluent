@@ -32,9 +32,13 @@ export function semaphore(max) {
 // Simultaneous requests allowed per key. Small on purpose. Keys not listed
 // here (one per employer site, such as "site:acme.wd1.myworkdayjobs.com")
 // get 2.
-const LIMITS = { greenhouse: 4, lever: 3, ashby: 3, workable: 2 };
+const LIMITS = { greenhouse: 4, lever: 3, ashby: 3, workable: 2, workday: 1 };
 const gates = {};
 const gate = (key) => (gates[key] ||= semaphore(LIMITS[key] || 2));
+
+// Minimum time between the start of two requests for a key, in ms.
+const GAPS = { workday: Number(process.env.WORKDAY_GAP_MS ?? 2000) };
+const lastStart = {};
 
 /* One key per address, for sites where every employer has its own. */
 export const siteKey = (url) => { try { return `site:${new URL(url).host.toLowerCase()}`; } catch { return "site:unknown"; } };
@@ -50,6 +54,12 @@ function testRoute(url) {
 
 async function request(key, url, { accept, read, timeout = 20000, retries = 2 }) {
   return gate(key)(async () => {
+    const gap = GAPS[key];
+    if (gap) {
+      const wait = (lastStart[key] || 0) + gap - Date.now();
+      if (wait > 0) await sleep(wait);
+      lastStart[key] = Date.now();
+    }
     const target = testRoute(url);
     for (let attempt = 0; ; attempt++) {
       const ctrl = new AbortController();

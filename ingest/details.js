@@ -21,7 +21,7 @@
    Returns { html, pay, employmentType, via } or null.
    ========================================================================== */
 
-import { getJson, getText, siteKey } from "./lib/http.js";
+import { getJson, getText, siteKey, semaphore } from "./lib/http.js";
 import { BASE, ashbyBoard, ashbyRaw } from "./adapters.js";
 import { htmlToText } from "./lib/parse.js";
 
@@ -91,7 +91,17 @@ async function workable(raw) {
 
 /* --- Workday ---------------------------------------------------------------
    Job page: https://{tenant}.wd{N}.myworkdayjobs.com[/{locale}]/{site}/job/{place}/{title}_{id}
-   Its data: https://{tenant}.wd{N}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/job/{place}/{title}_{id} */
+   Its data: https://{tenant}.wd{N}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/job/{place}/{title}_{id}
+
+   Every Workday site sits behind Cloudflare, which turns automated readers
+   away from some networks (GitHub's runners among them) with "429 Too Many
+   Requests". So Workday is read one posting at a time, two seconds apart
+   (lib/http.js), and the first refusal ends Workday reading for the run.
+   What was read is kept and reused on later runs (build.js).             */
+
+let workdayRefused = false;
+const workdayOne = semaphore(1);
+export const resetDetailState = () => { workdayRefused = false; };
 
 export function workdayDataUrl(postingUrl) {
   let u;
@@ -111,7 +121,16 @@ export function workdayDataUrl(postingUrl) {
 async function workday(raw) {
   const url = workdayDataUrl(raw.url);
   if (!url) return null;
-  const data = await getJson(siteKey(url), url);
+  // Checked inside the queue, so a refusal stops requests already waiting.
+  const data = await workdayOne(async () => {
+    if (workdayRefused) throw new Error("Workday turned us away earlier in this run");
+    try {
+      return await getJson("workday", url, { retries: 0 });
+    } catch (err) {
+      if (err.status === 429 || err.status === 403) workdayRefused = true;
+      throw err;
+    }
+  });
   const info = data?.jobPostingInfo;
   if (!info?.jobDescription) return null;
   return { html: info.jobDescription, employmentType: info.timeType || "", via: "workday" };
@@ -237,6 +256,11 @@ export async function fetchDetail(raw) {
       if (usable(d)) return d;
       why.push(`${raw.ats}: ${d ? "description too short" : "no description"}`);
     } catch (err) { why.push(`${raw.ats}: ${err.message}`); }
+  }
+  // Workday's job pages sit behind the same protection as its data.
+  if (raw.ats === "workday" && workdayRefused) {
+    raw.detailError = why.join("; ");
+    return null;
   }
   try {
     const d = await jobPage(raw);

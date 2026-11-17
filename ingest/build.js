@@ -36,7 +36,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ADAPTERS, clearBoardCache } from "./adapters.js";
-import { fetchDetail } from "./details.js";
+import { fetchDetail, resetDetailState } from "./details.js";
 import { CURATED } from "./companies.js";
 import { classify, SKIP_BOARDS, FAMILIES, FIELDS, LEVELS } from "./lib/classify.js";
 import { normalize, stableId, SOURCE_LABEL } from "./lib/normalize.js";
@@ -102,6 +102,7 @@ export async function run(opts) {
   const stats = { scanned: 0, candidates: 0, boardsPolled: 0, boardsFailed: [], drops: {}, sources: {}, details: { read: {}, reused: 0, missing: {}, via: {}, examples: [] } };
   const drop = (reason) => { stats.drops[reason] = (stats.drops[reason] || 0) + 1; };
   clearBoardCache();
+  resetDetailState();
 
   // 1. Snapshot
   let snapshotRows = [];
@@ -181,6 +182,9 @@ export async function run(opts) {
       else toRead.push(k);
     }
     if (fetchDetails && toRead.length) {
+      // Newest first, so that if a source stops answering partway through,
+      // the freshest roles are the ones already read.
+      toRead.sort((a, b) => String(b.job.posted).localeCompare(String(a.job.posted)));
       log(`reading ${toRead.length} job descriptions`);
       await pool(toRead, 10, async (k) => {
         const d = await fetchDetail(k.raw).catch(() => null);
