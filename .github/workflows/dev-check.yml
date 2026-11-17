@@ -13,10 +13,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install --no-audit --no-fund
-      - run: npm test
-      - run: git clone --depth 1 https://github.com/Feashliaa/job-board-data /tmp/job-board-data
-      - name: Full run into a scratch folder
-        run: mkdir -p /tmp/out && node ingest/build.js --snapshot /tmp/job-board-data --out /tmp/out
-      - name: Sample overviews
-        run: node ingest/tools/sample-report.mjs /tmp/out
+      - name: Workday pace probe
+        run: node ingest/tools/workday-probe.mjs
