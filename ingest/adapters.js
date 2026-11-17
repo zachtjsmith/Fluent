@@ -20,7 +20,7 @@ import { maybeRelevant } from "./lib/classify.js";
 
 /* Overridable so the pipeline can be tested against the local fixture server.
    Leave unset in normal use: these defaults are the real public endpoints. */
-const BASE = {
+export const BASE = {
   greenhouse: process.env.ATS_BASE_GREENHOUSE || "https://boards-api.greenhouse.io",
   lever: process.env.ATS_BASE_LEVER || "https://api.lever.co",
   ashby: process.env.ATS_BASE_ASHBY || "https://api.ashbyhq.com",
@@ -79,6 +79,7 @@ export async function lever(board) {
       postedAt: p.createdAt ? new Date(p.createdAt).toISOString() : null,
       url: p.hostedUrl, applyUrl: p.applyUrl || p.hostedUrl,
       pay: sr && sr.currency === "USD" && /year|annual/i.test(sr.interval || "") && sr.min && sr.max ? { min: sr.min, max: sr.max, extra: "" } : null,
+      employmentType: p.categories?.commitment || "",
       companyName: null,
     };
   });
@@ -87,23 +88,35 @@ export async function lever(board) {
 /* --- Ashby -----------------------------------------------------------------
    /posting-api/job-board/{token}?includeCompensation=true                   */
 
+// One request per board per run, shared with details.js.
+const ashbyBoards = new Map();
+export const clearBoardCache = () => ashbyBoards.clear();
+export function ashbyBoard(token) {
+  const key = String(token).toLowerCase();
+  if (!ashbyBoards.has(key)) ashbyBoards.set(key, getJson("ashby", `${BASE.ashby}/posting-api/job-board/${encodeURIComponent(token)}?includeCompensation=true`));
+  return ashbyBoards.get(key);
+}
+
+export function ashbyRaw(board, j) {
+  const salary = (j.compensation?.summaryComponents || []).find((c) => c.compensationType === "Salary" && c.currencyCode === "USD" && /year/i.test(c.interval || "") && c.minValue && c.maxValue);
+  const country = j.address?.postalAddress?.addressCountry || "";
+  const withCountry = (loc) => (country && loc && !new RegExp(country, "i").test(loc) ? `${loc}, ${country}` : loc);
+  return {
+    ats: "ashby", token: board.token, externalId: String(j.id), title: j.title || "",
+    department: [j.department, j.team].filter(Boolean).join(", "),
+    locations: uniq([withCountry(j.location), ...(j.secondaryLocations || []).map((s) => s.location)]),
+    remoteFlag: j.isRemote === true ? true : null, workplace: j.workplaceType || "",
+    html: j.descriptionHtml || j.descriptionPlain || "", postedAt: j.publishedAt || null,
+    url: j.jobUrl, applyUrl: j.applyUrl || j.jobUrl,
+    pay: salary ? { min: salary.minValue, max: salary.maxValue, extra: (j.compensation.summaryComponents || []).some((c) => /equity/i.test(c.compensationType || "")) ? "+ equity" : "" } : null,
+    employmentType: j.employmentType || "",
+    companyName: null,
+  };
+}
+
 export async function ashby(board) {
-  const data = await getJson("ashby", `${BASE.ashby}/posting-api/job-board/${encodeURIComponent(board.token)}?includeCompensation=true`);
-  return (data?.jobs || []).filter((j) => j.isListed !== false && maybeRelevant(j.title)).map((j) => {
-    const salary = (j.compensation?.summaryComponents || []).find((c) => c.compensationType === "Salary" && c.currencyCode === "USD" && /year/i.test(c.interval || "") && c.minValue && c.maxValue);
-    const country = j.address?.postalAddress?.addressCountry || "";
-    const withCountry = (loc) => (country && loc && !new RegExp(country, "i").test(loc) ? `${loc}, ${country}` : loc);
-    return {
-      ats: "ashby", token: board.token, externalId: String(j.id), title: j.title || "",
-      department: [j.department, j.team].filter(Boolean).join(", "),
-      locations: uniq([withCountry(j.location), ...(j.secondaryLocations || []).map((s) => s.location)]),
-      remoteFlag: j.isRemote === true ? true : null, workplace: j.workplaceType || "",
-      html: j.descriptionHtml || j.descriptionPlain || "", postedAt: j.publishedAt || null,
-      url: j.jobUrl, applyUrl: j.applyUrl || j.jobUrl,
-      pay: salary ? { min: salary.minValue, max: salary.maxValue, extra: (j.compensation.summaryComponents || []).some((c) => /equity/i.test(c.compensationType || "")) ? "+ equity" : "" } : null,
-      companyName: null,
-    };
-  });
+  const data = await ashbyBoard(board.token);
+  return (data?.jobs || []).filter((j) => j.isListed !== false && maybeRelevant(j.title)).map((j) => ashbyRaw(board, j));
 }
 
 /* --- Workable --------------------------------------------------------------

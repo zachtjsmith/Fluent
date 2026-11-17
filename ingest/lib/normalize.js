@@ -7,6 +7,9 @@
      - the Apply link must open the posting itself, never a careers homepage
      - a posting older than 60 days, or with no date at all, is dropped
      - pay, tools and audience appear only when the employer published them
+     - every listing shows an overview taken from its own job description;
+       with requireDetail on, a posting whose description could not be read
+       is dropped
    ========================================================================== */
 
 import crypto from "node:crypto";
@@ -24,7 +27,18 @@ export const DROP = {
   NO_DATE: "no posting date",
   INTERNAL: "internal-only careers site",
   NO_SALARY: "no published salary (strict mode)",
+  NO_DESCRIPTION: "no job description could be read",
+  UNPAID: "unpaid or academic post",
 };
+
+/* The employment type an employer stated (schema.org, Lever, Ashby, BambooHR
+   or Workday wording), as one of the board's job-type tags. */
+export function levelFromType(type) {
+  const t = String(type || "").toLowerCase().replace(/[^a-z]+/g, " ");
+  if (/\bintern(ship)?\b/.test(t)) return "Entry level";
+  if (/\b(contract|contractor|temporary|temp|per diem|freelance|fixed term|seasonal)\b/.test(t)) return "Contract";
+  return "";
+}
 
 const INTERNAL_SITE = /myworkdayjobs\.com\/(?:[a-z]{2}-[a-z]{2}\/)?[^/]*(internal|redeploy|employee|alumni)[^/]*\//i;
 
@@ -46,18 +60,22 @@ export function isDeepLink(url) {
 }
 
 const tidyTitle = (t) => String(t || "").replace(/\s+/g, " ").replace(/\s+([,)])/g, "$1").trim();
-const stableId = (raw) => crypto.createHash("sha1").update(`${raw.ats}|${String(raw.token).toLowerCase()}|${raw.externalId || raw.url}`).digest("hex").slice(0, 12);
+export const stableId = (raw) => crypto.createHash("sha1").update(`${raw.ats}|${String(raw.token).toLowerCase()}|${raw.externalId || raw.url}`).digest("hex").slice(0, 12);
 
 /**
  * normalize(raw, opts) -> { job } | { drop }
- * opts: { now: Date, maxAgeDays: number, requireSalary: boolean, geoFilter: boolean }
+ * opts: { now: Date, maxAgeDays: number, requireSalary: boolean, geoFilter: boolean, requireDetail: boolean }
+ *
+ * raw.cached, when set, is the listing's description from the last run
+ * ({ detail, pay }); it is used only when the posting itself came without one.
  */
-export function normalize(raw, { now = new Date(), maxAgeDays = 60, requireSalary = false, geoFilter = true } = {}) {
+export function normalize(raw, { now = new Date(), maxAgeDays = 60, requireSalary = false, geoFilter = true, requireDetail = false } = {}) {
   if (raw.recruiter || SKIP_BOARDS.has(String(raw.token || "").toLowerCase())) return { drop: DROP.STAFFING };
 
   const title = tidyTitle(raw.title);
   const c = classify(title);
   if (c.drop) return { drop: c.drop };
+  if (/\bvolunteer\b/i.test(String(raw.employmentType || ""))) return { drop: DROP.UNPAID };
 
   // Where is it? Keep the US locations; drop the listing if there are none.
   const read = (raw.locations || []).filter(Boolean).map((l) => readLocation(l, { url: raw.url, remoteFlag: raw.remoteFlag, workplace: raw.workplace }));
@@ -87,29 +105,46 @@ export function normalize(raw, { now = new Date(), maxAgeDays = 60, requireSalar
 
   const company = companyName(raw.ats, raw.token, raw.companyName);
   const text = raw.html ? htmlToText(raw.html) : "";
+  const cached = !text && raw.cached ? raw.cached : null;
   // Pay sent as a structured field can be an hourly or monthly rate. Only a
   // plausible yearly figure is shown; anything else falls back to the text.
   const yearly = (p) => p && p.min >= 20000 && p.max >= p.min && p.max <= 2000000;
   const fromField = yearly(raw.pay) ? raw.pay : null;
   const fromText = fromField ? null : parsePay(text);
-  const pay = fromField || (yearly(fromText) ? fromText : null);
+  const pay = fromField || (yearly(fromText) ? fromText : null) || (cached && yearly(cached.pay) ? cached.pay : null);
   if (requireSalary && !pay) return { drop: DROP.NO_SALARY };
-  const detail = raw.html ? extractDetail(raw.html) : { summary: "", does: [], wants: [] };
+
+  let detail = { summary: "", does: [], wants: [] };
+  let tools = [], audience = "";
+  if (text) {
+    detail = extractDetail(raw.html, { title });
+    tools = findTools(text, company);
+    audience = findAudience(text);
+  } else if (cached) {
+    detail = { summary: cached.detail.summary || "", does: cached.detail.does || [], wants: cached.detail.wants || [] };
+    tools = cached.detail.tools || [];
+    audience = cached.detail.audience || "";
+  }
+  // A hand-checked note, written in our own words, fills in when the posting
+  // itself could not be read.
+  if (!detail.summary && raw.detailNote) {
+    detail = { summary: raw.detailNote.summary || "", does: raw.detailNote.does || [], wants: raw.detailNote.wants || [] };
+  }
+  if (requireDetail && !detail.summary) return { drop: DROP.NO_DESCRIPTION };
 
   return {
     job: {
       id: stableId(raw),
-      title, company, family: c.family, field: fieldOf(title, company), level: c.level || "",
+      title, company, family: c.family, field: fieldOf(title, company), level: c.level || levelFromType(raw.employmentType) || (cached && cached.level) || "",
       locations, mode,
       min: pay ? pay.min : null, max: pay ? pay.max : null, extra: pay ? pay.extra || "" : "",
       posted,
       ats: raw.ats, source: SOURCE_LABEL[raw.ats] || raw.ats, board: String(raw.token || ""),
       featured: false,
-      hasDetail: Boolean(detail.summary || detail.does.length || detail.wants.length),
+      hasDetail: Boolean(detail.summary),
       detail: {
         summary: detail.summary, does: detail.does, wants: detail.wants,
-        tools: text ? findTools(text, company) : [],
-        audience: text ? findAudience(text) : "",
+        tools, audience,
         applyUrl, postingUrl: isDeepLink(raw.url) ? raw.url : applyUrl,
       },
     },

@@ -1,0 +1,22 @@
+name: Description check (temporary)
+
+on:
+  push:
+    branches: [dev-descriptions]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: git clone --depth 1 https://github.com/Feashliaa/job-board-data /tmp/job-board-data
+      - name: Full run into a scratch folder
+        run: mkdir -p /tmp/out && node ingest/build.js --snapshot /tmp/job-board-data --out /tmp/out
+      - name: Sample overviews
+        run: node ingest/tools/sample-report.mjs /tmp/out
