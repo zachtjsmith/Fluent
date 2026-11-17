@@ -7,7 +7,7 @@ A sibling of Renewal (renewalcs.com), built the same way: a small collector read
 | Folder | What it does |
 | --- | --- |
 | `src/` | The site (React + Vite), in the B1 · Slate theme. Settings are at the top of `src/App.jsx`; colours are variables at the top of `src/styles.css`. |
-| `ingest/` | The collector. `build.js` runs it; `adapters.js` reads Greenhouse, Lever, Ashby and Workable; `snapshot.js` reads an open daily dataset that also covers Workday and iCIMS; `lib/` holds the rules. |
+| `ingest/` | The collector. `build.js` runs it; `adapters.js` reads Greenhouse, Lever, Ashby and Workable boards; `snapshot.js` reads an open daily dataset that also covers Workday, iCIMS, BambooHR, Paylocity and JOIN; `details.js` reads the full description of any posting that arrived without one; `lib/` holds the rules. |
 | `ingest/test/` | The test suite, with a local stand-in for the hiring systems. |
 | `public/` | `jobs.json` and the detail files the site loads, rewritten by every run. `news.json` holds the News page: edit it by hand. |
 | `.github/workflows/ingest.yml` | The nightly run. |
@@ -18,17 +18,20 @@ A sibling of Renewal (renewalcs.com), built the same way: a small collector read
 - Internships, graduate, junior and contract roles are kept and tagged "Entry level" or "Contract" from the title. Data-labelling gigs ("AI trainer", annotation, paid-by-the-task model training) stay out, as do unpaid and fellowship posts.
 - Each listing is tagged with an industry when its title or employer makes that plain (healthcare, financial services, legal, HR, education, public sector).
 - US roles only. A location that cannot be placed is dropped, not guessed.
+- Every listing shows an overview of its own job description: the posting's own sentences about the role, plus what the job involves and what the employer asks for. A posting whose description cannot be read is not listed. Descriptions read on an earlier run are reused, so a site that is briefly down does not make a role disappear.
+- Workday sites sit behind Cloudflare, which usually turns GitHub's machines away ("429 Too Many Requests"). The collector reads Workday one posting at a time, two seconds apart, newest first, and stops for the day at the first refusal. Any Workday description it does read is kept, so those roles stay listed; the rest are not listed until their description can be read.
 - Pay, tools and audience appear only when the employer published them. Nothing is estimated.
 - Apply links must open the posting itself, never a careers homepage.
 - A posting older than 60 days, or with no date, is dropped (`--max-age` changes it; `--strict` also drops roles with no published salary). The site applies the same 60-day limit when it loads, so listings age off even if a run is missed.
 - Postings on an employer's internal-only careers site are skipped.
 - Staffing-agency reposts and data-labelling gig boards are skipped.
+- If a run finds fewer than half of the previous run's listings, it stops without replacing the board (`--force` overrides), so a source that breaks overnight cannot empty the site.
 
 ## Running it
 
 ```
 npm install
-npm test                                   # 25 tests
+npm test                                   # 33 tests
 npm run dev                                # the site, at http://localhost:5173
 
 # Collect listings (needs internet access to the hiring systems):
@@ -40,7 +43,7 @@ npm run build                              # the site, ready to host, in dist/
 
 ## Daily refresh
 
-`.github/workflows/ingest.yml` is set up like Renewal's: every day at 06:00 UTC it installs, runs the tests, collects, checks the site still builds and commits `Board refresh: N live roles`. It can also be run by hand from the Actions tab ("Refresh job board" → Run workflow). The first run, on 16 November 2026 (UTC), polled 391 employer boards directly (9 failed and fell back to the open dataset) and published 503 listings, 118 with pay the employer published.
+`.github/workflows/ingest.yml` is set up like Renewal's: every day at 06:00 UTC it installs, runs the tests, collects, checks the site still builds and commits `Board refresh: N live roles`. It can also be run by hand from the Actions tab ("Refresh job board" → Run workflow); tick "force" only when you expect the board to shrink by more than half, since without it such a run stops and leaves the board as it was. The first run, on 16 November 2026 (UTC), polled 391 employer boards directly (9 failed and fell back to the open dataset) and published 503 listings, 118 with pay the employer published.
 
 ## Before launch
 

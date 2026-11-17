@@ -166,9 +166,6 @@ function Detail({ job, detail, loading, today, onBack }) {
           {detail.wants.length > 0 && (<div><h3>From the posting: what they ask for</h3><ul>{detail.wants.map((d) => <li key={d}>{d}</li>)}</ul></div>)}
         </div>
       )}
-      {detail && !job.hasDetail && (
-        <p className="meta-line" style={{ maxWidth: "68ch" }}>We have this role's title, location and link from the employer's {job.source} board. The full description, and any pay the employer published, are on the posting itself.</p>
-      )}
       <div className="actions">
         {detail?.applyUrl
           ? <a className="btn primary" href={detail.applyUrl} target="_blank" rel="noopener noreferrer">Apply on the employer's site</a>
@@ -517,6 +514,7 @@ function AboutPage() {
         <li>We keep titles on the non-engineering side of AI and drop the rest: engineering, research and data roles, sales and marketing jobs at AI companies, data-labelling gigs and staffing-agency reposts.</li>
         <li>We tag the industry when the title or the employer makes it plain, so you can filter to healthcare, financial services, legal and others. Internships, junior and contract roles are labelled the same way, from the title.</li>
         <li>We keep roles in the United States. A location we cannot place is dropped, not guessed.</li>
+        <li>We read every role's own job description and show an overview of it, taken from the employer's own words. A role whose description we cannot read is not listed.</li>
         <li>We check that every Apply button opens the posting itself, not a careers homepage, and we remove anything first seen more than {MAX_AGE_DAYS} days ago.</li>
         <li>Employers can also send a role directly. Those need a salary range, and each one is checked by hand.</li>
       </ol>

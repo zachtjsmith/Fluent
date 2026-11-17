@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import { classify, fieldOf, levelOf, maybeRelevant } from "../lib/classify.js";
 import { readLocation } from "../lib/geo.js";
 import { decodeEntities, htmlToText, parsePay, extractDetail, findTools, findAudience } from "../lib/parse.js";
-import { normalize, isDeepLink, DROP } from "../lib/normalize.js";
+import { jobPostingFromHtml, workdayDataUrl, bamboohrDataUrl } from "../details.js";
+import { normalize, isDeepLink, DROP, levelFromType } from "../lib/normalize.js";
 import { dedupe } from "../lib/dedupe.js";
 import { prettify, companyName } from "../companies.js";
 
@@ -148,6 +149,67 @@ test("excerpts: summary and the two lists, without boilerplate", () => {
   assert.deepEqual(d.does, ["Build and run the enablement program", "Coach a network of champions"]);
   assert.equal(d.wants.length, 2);
   assert.ok(!JSON.stringify(d).includes("vacation"));
+});
+test("overview: the posting's own sentences about the role, without notes, greetings or company history", () => {
+  const legora = extractDetail("<p>PLEASE NOTE: This role is 5 days/week on-site in our NYC (Manhattan) office.</p><h3>About Legora</h3><p>Legora is a collaborative AI for lawyers, founded in 2023 and backed by leading investors.</p><h3>About the role</h3><p>As our AI Enablement Lead, you will help law firms get real value from Legora. You will run onboarding, train champions and measure adoption.</p>", { title: "AI Enablement Lead" });
+  assert.equal(legora.summary, "As our AI Enablement Lead, you will help law firms get real value from Legora. You will run onboarding, train champions and measure adoption.");
+  const hello = extractDetail("<p>Hey there! James here, co-founder at Conversion. Just wanted to share what we are looking for.</p><p>The Founding Deployment Strategist will own every customer rollout from contract to live usage.</p>", { title: "Founding Deployment Strategist" });
+  assert.match(hello.summary, /^The Founding Deployment Strategist will own/);
+  // Workday style: bold paragraphs as headings, company text first, pay last.
+  const workday = extractDetail("<p><b>Company Description</b></p><p>At Capital One, we are a leading bank founded in 1994 with a mission to change banking.</p><p><b>Position Summary</b></p><p>The Learning and Enablement Consultant for AI designs programs that help associates use AI tools well.</p><p><b>Basic Qualifications:</b></p><ul><li>Bachelor degree or military experience</li><li>At least 4 years of experience in learning design</li></ul><p>New York, NY: $175,800 - $200,700 for Manager</p>", { title: "Learning & Enablement Consultant for AI" });
+  assert.match(workday.summary, /^The Learning and Enablement Consultant for AI designs programs/);
+  assert.equal(workday.wants.length, 2);
+  // A posting that is only a list still gets an overview, from its own list.
+  const list = extractDetail("<ul><li>Lead customer deployments from kickoff to steady use</li><li>Run executive check-ins every month</li><li>Report adoption to leadership</li></ul>");
+  assert.equal(list.summary, "Lead customer deployments from kickoff to steady use. Run executive check-ins every month.");
+  assert.equal(extractDetail("").summary, "");
+  // Pay lines, time-zone notes, list lead-ins and sentences that point back at nothing are skipped.
+  assert.equal(extractDetail("<p>This position is eligible to participate in an annual incentive program.</p><ul><li>Lead enterprise AI initiatives from strategy to adoption</li><li>Coach leaders through change</li></ul>").summary, "Lead enterprise AI initiatives from strategy to adoption. Coach leaders through change.");
+  assert.equal(extractDetail("<p>Alignment with west coast US time zone</p><p>You will run formal privacy reviews for AI products and features.</p>").summary, "You will run formal privacy reviews for AI products and features.");
+  assert.equal(extractDetail("<p>That question is this seat. You will define the next generation of the product suite.</p>").summary, "You will define the next generation of the product suite.");
+  assert.equal(extractDetail("<p>We are seeking a product manager to build with generative AI. We are looking for a systems-thinker with grit to:</p>").summary, "We are seeking a product manager to build with generative AI.");
+});
+test("job pages: schema.org JobPosting, Next.js page data and embedded descriptions", () => {
+  const ld = (o) => `<script type="application/ld+json">${o}</script>`;
+  const a = jobPostingFromHtml(ld(JSON.stringify({ "@type": "JobPosting", description: "&lt;p&gt;You will lead adoption.&lt;/p&gt;", employmentType: ["FULL_TIME", "CONTRACTOR"], baseSalary: { currency: "USD", value: { minValue: 100000, maxValue: 130000, unitText: "YEAR" } } })));
+  assert.equal(htmlToText(a.html), "You will lead adoption.");
+  assert.deepEqual(a.pay, { min: 100000, max: 130000, extra: "" });
+  assert.equal(levelFromType(a.employmentType), "Contract");
+  // Hourly or non-US pay is not taken as a salary.
+  assert.equal(jobPostingFromHtml(ld(JSON.stringify({ "@type": "JobPosting", description: "x", baseSalary: { currency: "USD", value: { minValue: 40, maxValue: 55, unitText: "HOUR" } } }))).pay, null);
+  // @graph, and raw line breaks inside the JSON.
+  const rawBreak = '{"@graph":[{"@type":"Organization"},{"@type":"JobPosting","description":"Line one\nline two"}]}';
+  assert.ok(rawBreak.includes("\n"), "the JSON really has a raw line break inside a string");
+  assert.equal(jobPostingFromHtml(ld(rawBreak)).html.replace(/\s+/g, " "), "Line one line two");
+  const next = jobPostingFromHtml(`<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { job: { description: "d".repeat(200) } } } })}</script>`);
+  assert.equal(next.html.length, 200);
+  const embedded = jobPostingFromHtml(`<script>window.pageData = {"Job":{"Description":"${"e".repeat(180)}"}};</script>`);
+  assert.equal(embedded.html.length, 180);
+  assert.equal(jobPostingFromHtml("<p>Loading</p>"), null);
+});
+test("hiring-system addresses: Workday and BambooHR data behind a job page", () => {
+  assert.equal(workdayDataUrl("https://capitalone.wd12.myworkdayjobs.com/capital_one/job/Richmond-VA/Manager--Learning---Enablement-Consultant-for-AI_R1004111"), "https://capitalone.wd12.myworkdayjobs.com/wday/cxs/capitalone/capital_one/job/Richmond-VA/Manager--Learning---Enablement-Consultant-for-AI_R1004111");
+  assert.equal(workdayDataUrl("https://gsk.wd5.myworkdayjobs.com/en-US/gskcareers/job/USA---Pennsylvania---Philadelphia/Director_450185?source=x"), "https://gsk.wd5.myworkdayjobs.com/wday/cxs/gsk/gskcareers/job/USA---Pennsylvania---Philadelphia/Director_450185");
+  assert.equal(workdayDataUrl("https://acme.wd1.myworkdayjobs.com/External/details/AI-Lead_R-9"), "https://acme.wd1.myworkdayjobs.com/wday/cxs/acme/External/job/AI-Lead_R-9");
+  assert.equal(workdayDataUrl("https://jobs.example.com/job/1"), null);
+  assert.equal(bamboohrDataUrl("https://trimark.bamboohr.com/careers/151"), "https://trimark.bamboohr.com/careers/151/detail");
+  assert.equal(bamboohrDataUrl("https://trimark.bamboohr.com/jobs/view.php?id=42"), "https://trimark.bamboohr.com/careers/42/detail");
+  assert.equal(levelFromType("Intern"), "Entry level");
+  assert.equal(levelFromType("FULL_TIME"), "");
+});
+test("normalize: with descriptions required, a listing without one is left off", () => {
+  const bare = { ...raw({ html: "" }) };
+  assert.equal(normalize(bare, { ...NOW, requireDetail: true }).drop, DROP.NO_DESCRIPTION);
+  assert.ok(normalize(bare, NOW).job, "kept when descriptions are not required (offline runs)");
+  // A hand-checked note counts, and so does a description read on an earlier run.
+  assert.equal(normalize({ ...bare, detailNote: { summary: "Our own summary of the role." } }, { ...NOW, requireDetail: true }).job.detail.summary, "Our own summary of the role.");
+  const cached = normalize({ ...bare, cached: { detail: { summary: "From yesterday.", does: ["a"], wants: [], tools: ["Glean"], audience: "" }, pay: { min: 150000, max: 160000, extra: "" } } }, { ...NOW, requireDetail: true }).job;
+  assert.deepEqual([cached.detail.summary, cached.detail.tools[0], cached.min], ["From yesterday.", "Glean", 150000]);
+  assert.equal(normalize({ ...bare, html: "<p>x</p>", employmentType: "Volunteer" }, NOW).drop, DROP.UNPAID);
+});
+test("dedupe: the same employer with or without Inc is one listing", () => {
+  const j = (company) => ({ company, title: "Senior Privacy Review Specialist", locations: [{ label: "Remote — US", mode: "Remote" }], mode: "Remote", posted: "2026-11-12", min: null, hasDetail: true, featured: false, detail: { tools: [] } });
+  assert.equal(dedupe([j("Exadel"), j("Exadel Inc")]).length, 1);
 });
 test("tools: only tools the posting names, never the company's own product", () => {
   assert.deepEqual(findTools("covering Claude, Cowork, and Claude Code, plus Glean", "Juniper Square"), ["Claude Code", "Claude", "Glean"]);

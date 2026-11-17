@@ -18,6 +18,10 @@ on:
         options:
           - ingest
           - ingest-strict
+      force:
+        description: "Replace the board even if it shrinks by more than half"
+        type: boolean
+        default: false
 
 concurrency:
   group: ingest
@@ -52,11 +56,11 @@ jobs:
       # Drops anything older than 60 days, then reads employers' boards directly.
       - name: Pull jobs from the dataset and every employer board
         if: inputs.mode != 'ingest-strict'
-        run: npm run ingest -- --snapshot /tmp/job-board-data
+        run: npm run ingest -- --snapshot /tmp/job-board-data ${{ inputs.force && '--force' || '' }}
 
       - name: Pull jobs (salary required)
         if: inputs.mode == 'ingest-strict'
-        run: npm run ingest -- --snapshot /tmp/job-board-data --strict
+        run: npm run ingest -- --snapshot /tmp/job-board-data --strict ${{ inputs.force && '--force' || '' }}
 
       - name: Check the site still builds
         run: npm run build

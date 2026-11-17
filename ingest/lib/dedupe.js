@@ -8,7 +8,9 @@
    and one with excerpts beats a bare title.
    ========================================================================== */
 
-const key = (j) => `${j.company.toLowerCase().replace(/[^a-z0-9]+/g, "")}|${j.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()}`;
+// "Exadel" and "Exadel Inc" are the same employer.
+const companyKey = (c) => c.toLowerCase().replace(/[,.]?\s+(inc|llc|ltd|limited|corp|corporation|co|plc|gmbh|ab|sa|ag)\.?$/, "").replace(/[^a-z0-9]+/g, "");
+const key = (j) => `${companyKey(j.company)}|${j.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()}`;
 const richness = (j) => (j.min ? 4 : 0) + (j.hasDetail ? 2 : 0) + (j.detail.tools.length ? 1 : 0);
 
 export function dedupe(jobs) {

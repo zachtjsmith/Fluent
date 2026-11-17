@@ -3,7 +3,8 @@
 
    - Identifies itself with a contact address, so an employer or a hiring
      system that wants us to stop can say so.
-   - Each hiring system gets its own small concurrency limit.
+   - Each hiring system (or, for Workday and employers' own sites, each
+     address) gets its own small concurrency limit.
    - Only network errors, 5xx and 429 are retried, and 429 honours the
      server's Retry-After.
    ========================================================================== */
@@ -28,19 +29,44 @@ export function semaphore(max) {
   };
 }
 
-// Simultaneous requests allowed per vendor. Small on purpose.
-const LIMITS = { greenhouse: 4, lever: 3, ashby: 3, workable: 2 };
+// Simultaneous requests allowed per key. Small on purpose. Keys not listed
+// here (one per employer site, such as "site:acme.wd1.myworkdayjobs.com")
+// get 2.
+const LIMITS = { greenhouse: 4, lever: 3, ashby: 3, workable: 2, workday: 1 };
 const gates = {};
-const gate = (vendor) => (gates[vendor] ||= semaphore(LIMITS[vendor] || 2));
+const gate = (key) => (gates[key] ||= semaphore(LIMITS[key] || 2));
 
-export async function getJson(vendor, url, { timeout = 20000, retries = 2 } = {}) {
-  return gate(vendor)(async () => {
+// Minimum time between the start of two requests for a key, in ms.
+const GAPS = { workday: Number(process.env.WORKDAY_GAP_MS ?? 2000) };
+const lastStart = {};
+
+/* One key per address, for sites where every employer has its own. */
+export const siteKey = (url) => { try { return `site:${new URL(url).host.toLowerCase()}`; } catch { return "site:unknown"; } };
+
+/* The tests send every https:// request to a local stand-in server instead.
+   Unset in normal use. */
+function testRoute(url) {
+  const base = process.env.COLLECTOR_TEST_SERVER;
+  if (!base || !/^https:\/\//i.test(url)) return url;
+  const u = new URL(url);
+  return `${base}/${u.host}${u.pathname}${u.search}`;
+}
+
+async function request(key, url, { accept, read, timeout = 20000, retries = 2 }) {
+  return gate(key)(async () => {
+    const gap = GAPS[key];
+    if (gap) {
+      const wait = (lastStart[key] || 0) + gap - Date.now();
+      if (wait > 0) await sleep(wait);
+      lastStart[key] = Date.now();
+    }
+    const target = testRoute(url);
     for (let attempt = 0; ; attempt++) {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), timeout);
       try {
-        const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: ctrl.signal });
-        if (res.ok) return await res.json();
+        const res = await fetch(target, { headers: { "User-Agent": UA, Accept: accept }, redirect: "follow", signal: ctrl.signal });
+        if (res.ok) return await read(res);
         const retryable = res.status === 429 || res.status >= 500;
         if (!retryable || attempt >= retries) throw new HttpError(res.status, url);
         const wait = Number(res.headers.get("retry-after"));
@@ -54,4 +80,12 @@ export async function getJson(vendor, url, { timeout = 20000, retries = 2 } = {}
       }
     }
   });
+}
+
+export function getJson(key, url, opts = {}) {
+  return request(key, url, { accept: "application/json", read: (r) => r.json(), ...opts });
+}
+
+export function getText(key, url, opts = {}) {
+  return request(key, url, { accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8", read: (r) => r.text(), ...opts });
 }
