@@ -98,6 +98,8 @@ select.input option { background: var(--surface); color: var(--ink); }
 
 .detail { flex: 999 1 460px; min-width: 0; padding: 26px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); display: flex; flex-direction: column; gap: 20px; }
 .detail-top { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+/* When the panel is shorter than its content it scrolls; nothing in it is squeezed. */
+.detail > * { flex-shrink: 0; }
 .mark { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 700; }
 .detail h2 { font-size: clamp(24px, 2.9vw, 31px); line-height: 1.15; letter-spacing: -0.025em; font-weight: 700; color: var(--ink); }
 .detail .company { font-size: 15px; color: var(--ink); }
@@ -156,8 +158,26 @@ ol.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column;
 }
 
 /* Show more, with the running count on the right */
-.show-more { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; }
-.show-more span { font-size: 13px; font-weight: 500; color: var(--muted); }
+/* Pages of the list. The new page slides in from the side it came from. */
+.rows-frame { overflow: hidden; padding: 4px; margin: -4px; } /* room for focus outlines */
+.rows { display: flex; flex-direction: column; gap: 6px; }
+.rows.slide-next { animation: from-right 220ms ease-out; }
+.rows.slide-prev { animation: from-left 220ms ease-out; }
+@keyframes from-right { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
+@keyframes from-left { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rows.slide-next, .rows.slide-prev { animation: none; } }
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.pager.compact { margin: 0 0 4px; }
+.pager .btn:disabled { opacity: 0.4; cursor: default; }
+.pager .btn.small { min-width: 44px; justify-content: center; }
+.pager-status { font-size: 14px; color: var(--body); text-align: center; }
+.pager.compact .pager-status { font-size: 13px; color: var(--muted); }
+
+/* On wide screens the open role stays in view while the list scrolls: the
+   panel sticks just below the top of the window and scrolls on its own. */
+@media (min-width: 901px) {
+  .detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); max-height: min(calc(100dvh - 32px), var(--pane-room, 100dvh)); overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+}
 
 /* News */
 .news-list { display: flex; flex-direction: column; gap: 14px; }

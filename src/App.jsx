@@ -27,7 +27,7 @@ const AD_OFFERS = [
 const FAMILIES = ["Enablement & Adoption", "Deployment & Solutions", "Strategy & Transformation", "Operations & Automation", "Governance & Risk", "AI Leads & Specialists", "Leadership", "Product"];
 const FIELDS = ["Healthcare & Life Sciences", "Financial Services", "Legal", "HR & People", "Education", "Public Sector"];
 const LEVELS = ["Entry level", "Contract"];
-const PAGE_SIZE = 20; // rows shown before "Show more"
+const PAGE_SIZE = 20; // rows on each page of the list
 const MAX_AGE_DAYS = 60; // a listing older than this is never shown, even if the nightly run stalls
 const BASE = import.meta.env.BASE_URL;
 const HASH_ROUTER = typeof __HASH_ROUTER__ !== "undefined" && __HASH_ROUTER__;
@@ -132,7 +132,27 @@ function Subscribe({ idPrefix, primary }) {
   );
 }
 
-function Detail({ job, detail, loading, today, onBack }) {
+/* Moves the list a page at a time. The compact one sits above the list, the
+   full one below it, so the next page is one click away from either end. */
+function Pager({ page, pages, total, onGo, compact = false }) {
+  if (pages <= 1) return null;
+  const from = page * PAGE_SIZE + 1;
+  const to = Math.min(total, (page + 1) * PAGE_SIZE);
+  const range = `${from.toLocaleString()}–${to.toLocaleString()} of ${total.toLocaleString()}`;
+  return (
+    <nav className={`pager${compact ? " compact" : ""}`} aria-label={compact ? "Pages of roles, top" : "Pages of roles"}>
+      <button type="button" className={`btn${compact ? " small" : ""} prev`} onClick={() => onGo(page - 1)} disabled={page === 0} aria-label="Previous page">
+        <span aria-hidden="true">←</span>{compact ? "" : " Previous"}
+      </button>
+      <span className="pager-status">{compact ? range : `Page ${page + 1} of ${pages}`}</span>
+      <button type="button" className={`btn${compact ? " small" : ""} next`} onClick={() => onGo(page + 1)} disabled={page >= pages - 1} aria-label="Next page">
+        {compact ? "" : "Next "}<span aria-hidden="true">→</span>
+      </button>
+    </nav>
+  );
+}
+
+function Detail({ job, detail, loading, today, onBack, paneRef }) {
   const facts = [
     ["Pay", job.min ? `${payLabel(job)}${job.extra ? ` ${job.extra}` : ""}` : "See job listing"],
     [job.locations.length > 1 ? "Locations" : "Location", job.locations.map((l) => l.label).join(" · ")],
@@ -146,7 +166,7 @@ function Detail({ job, detail, loading, today, onBack }) {
     ["Source", job.source === "Direct" ? "Sent by the employer" : `Employer's ${job.source} board`],
   ].filter(([, v]) => v);
   return (
-    <article className="detail" aria-label="Selected role">
+    <article ref={paneRef} className="detail" aria-label="Selected role">
       <button type="button" className="btn small back" onClick={onBack}>← All roles</button>
       <div className="detail-top">
         <span className="mark" aria-hidden="true" style={{ background: markColor(job.company) }}>{initials(job.company)}</span>
@@ -184,7 +204,8 @@ function JobsPage({ feed, news, go }) {
   const [sort, setSort] = useState("new");
   const [remote, setRemote] = useState(false);
   const [payOnly, setPayOnly] = useState(false);
-  const [shown, setShown] = useState(PAGE_SIZE);
+  const [page, setPage] = useState(0);
+  const [slide, setSlide] = useState(""); // which way the list last moved: "next", "prev" or ""
   const [selectedId, setSelectedId] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [detail, setDetail] = useState({ id: null, data: null, loading: false });
@@ -213,9 +234,14 @@ function JobsPage({ feed, news, go }) {
     });
   }, [base, family, sort]);
 
-  useEffect(() => { setShown(PAGE_SIZE); }, [q, family, field, level, sort, remote, payOnly]);
+  // A new search, filter or sort starts again at page 1.
+  useEffect(() => { setPage(0); setSlide(""); }, [q, family, field, level, sort, remote, payOnly]);
 
-  const selected = list.find((j) => j.id === selectedId) || list[0] || null;
+  const pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const current = Math.min(page, pages - 1);
+  const visible = list.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE);
+  // The open role is always one on the page in view: the one clicked, or else the first.
+  const selected = visible.find((j) => j.id === selectedId) || visible[0] || null;
 
   // Load the selected role's detail from its shard (each shard is fetched once).
   useEffect(() => {
@@ -233,10 +259,52 @@ function JobsPage({ feed, news, go }) {
 
   const clearAll = () => { setQ(""); setFamily("All roles"); setField(""); setLevel(""); setRemote(false); setPayOnly(false); };
   const splitRef = useRef(null);
+  const paneRef = useRef(null);
   const openRole = (id) => {
     setSelectedId(id); setSheetOpen(true);
     // On a phone the role opens as a full-width sheet: bring its top into view.
     if (window.matchMedia("(max-width: 900px)").matches) requestAnimationFrame(() => splitRef.current?.scrollIntoView({ block: "start" }));
+  };
+  // A newly opened role starts at the top of its panel, not where the last one was scrolled to.
+  useEffect(() => { if (paneRef.current) paneRef.current.scrollTop = 0; }, [selected?.id]);
+  // The pinned panel cannot reach past the end of the list, so near the bottom
+  // of a page it gets shorter (and scrolls inside) instead of sliding up out
+  // of view. --pane-room is the space between its pinned top and the list's end.
+  useEffect(() => {
+    const split = splitRef.current;
+    if (!split) return undefined;
+    let frame = 0;
+    const fit = () => {
+      frame = 0;
+      const room = Math.floor(split.getBoundingClientRect().bottom - 16 - 8);
+      split.style.setProperty("--pane-room", `${Math.max(room, 280)}px`);
+    };
+    const later = () => { if (!frame) frame = requestAnimationFrame(fit); };
+    fit();
+    window.addEventListener("scroll", later, { passive: true });
+    window.addEventListener("resize", later);
+    const watch = typeof ResizeObserver === "function" ? new ResizeObserver(later) : null;
+    watch?.observe(split);
+    return () => {
+      window.removeEventListener("scroll", later);
+      window.removeEventListener("resize", later);
+      watch?.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+  const goPage = (n) => {
+    const next = Math.max(0, Math.min(pages - 1, n));
+    if (next === current) return;
+    setSlide(next > current ? "next" : "prev");
+    setPage(next);
+    // From the pager under the list, bring the top of the new page into view.
+    requestAnimationFrame(() => {
+      const el = splitRef.current;
+      if (el && el.getBoundingClientRect().top < 0) {
+        const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        el.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
+      }
+    });
   };
   const families = FAMILIES.filter((f) => feed.jobs.some((j) => j.family === f));
   const fields = FIELDS.filter((f) => feed.jobs.some((j) => j.field === f));
@@ -300,7 +368,10 @@ function JobsPage({ feed, news, go }) {
 
       <section ref={splitRef} className={`wrap split ${sheetOpen && selected ? "open" : ""}`}>
         <div className="list">
-          {list.slice(0, shown).map((j) => {
+          <Pager page={current} pages={pages} total={list.length} onGo={goPage} compact />
+          <div className="rows-frame">
+          <div key={current} className={`rows ${slide ? `slide-${slide}` : ""}`}>
+          {visible.map((j) => {
             const days = ageDays(j.posted, today);
             const isNew = !j.featured && days !== null && days <= 2;
             return (
@@ -321,11 +392,9 @@ function JobsPage({ feed, news, go }) {
               </button>
             );
           })}
-          {list.length > shown && (
-            <button type="button" className="btn show-more" onClick={() => setShown(shown + PAGE_SIZE)}>
-              Show {Math.min(PAGE_SIZE, list.length - shown)} more <span>{shown} of {list.length.toLocaleString()} shown</span>
-            </button>
-          )}
+          </div>
+          </div>
+          <Pager page={current} pages={pages} total={list.length} onGo={goPage} />
           {!feed.loading && list.length === 0 && (
             <div className="empty">
               <p>No roles match that search.</p>
@@ -333,7 +402,7 @@ function JobsPage({ feed, news, go }) {
             </div>
           )}
         </div>
-        {selected && <Detail job={selected} detail={detail.id === selected.id ? detail.data : null} loading={detail.id !== selected.id || detail.loading} today={today} onBack={() => setSheetOpen(false)} />}
+        {selected && <Detail paneRef={paneRef} job={selected} detail={detail.id === selected.id ? detail.data : null} loading={detail.id !== selected.id || detail.loading} today={today} onBack={() => setSheetOpen(false)} />}
       </section>
 
       <section className="wrap band" aria-label="News and advertising">
